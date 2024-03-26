@@ -1,4 +1,5 @@
-const fs = require('fs');
+const fs = require('fs').promises;
+const stemmer = require('./PorterStemmer1980');
 
 function removeHeader(text){
     const term = "START OF THE PROJECT GUTENBERG EBOOK";
@@ -17,61 +18,73 @@ function clean(text){
     var str = text.replace(/\[[^\]]*\]/g, '');
     str = str.replace(/[^a-zA-Z0-9]/g, ' ');
     str = str.replace(/\s+/g, ' ');
-    str = str.toLowerCase()
-    return str;
+    str = str.replace('*','');
+    
+    var result = "";
+    var words = text.split(/\s+/);
+    for (const word of words){
+        if(/^[a-zA-Z0-9]+$/.test(word))
+            result += stemmer.stemmer(word) +" ";
+    }
+    return result.toLowerCase();
 }
 
-function getStopList(collection){
-    var wordlists = [];
+function getStopList(collection, threshold){
+    var wordCounts = {};
 
     for (const [filename, text] of Object.entries(collection)) {
-        var wordlist = [];
+        var wordlist = new Set();
 
         var words = text.split(/\s+/);
         
         for (const word of words) {
-            if (!wordlist.includes(word)) {
-                wordlist.push(word);
-            } 
+            if (word !== '') {
+                wordlist.add(word);
+            }
         }
 
-        wordlists.push(wordlist);
-    }
-
-    // TODO this part is crazy slow and has to be made quicker
-    // multiple array intersection
-    var stoplist = wordlists.reduce((a, b) => a.filter(c => b.includes(c))); 
-
-    
-    return stoplist;
-}
-
-function reduceCollection(collection){
-    // get stoplist
-    const stoplist = getStopList(collection);
-
-    // remove words present in all documents
-    for (const [filename, text] of Object.entries(collection)) {
-        // split the text into words
-        var words = text.split(/\s+/);
-        let removed = 0;
-        for (const word of words) {
-            if(stoplist.includes(word)){
-                // remove the word from the collection[filename]
-                collection[filename] = collection[filename].replace(new RegExp('\\b'+ word +'\\b', 'g'), '');
-                removed++;
+        for (const word of wordlist) {
+            if (word in wordCounts) {
+                wordCounts[word]++;
+            } else {
+                wordCounts[word] = 1;
             }
         }
     }
+
+    // Create stoplist based on threshold
+    var stoplist = [];
+    for (const [word, count] of Object.entries(wordCounts)) {
+        if (count >= threshold) {
+            stoplist.push(word);
+        }
+    }
+
+    return stoplist;
+}
+
+function reduceCollection(collection, threshold){
+    // get stoplist
+    const stoplist = getStopList(collection, threshold);
+    console.log(stoplist);
+
+    for(const stopword of stoplist){
+        for (const [filename, text] of Object.entries(collection)){
+            if(/^[a-zA-Z0-9]+$/.test(stopword))
+                collection[filename] = collection[filename].replace(new RegExp('\\b'+ stopword +'\\b', 'g'), '');
+        }
+    }
+
     return collection;
 }
 
-function getBookCollection(folder){
+async function getBookCollection(folder) {
     var collection = {};
+    const files = await fs.readdir(folder);
 
-    fs.readdirSync(folder).forEach(file => {
+    for (let file of files) {
         // raw data
-        const data = fs.readFileSync(folder + '/' + file, 'utf8');
+        const data = await fs.readFile(`${folder}/${file}`, 'utf8');
         collection[file] = data;
 
         // remove header
@@ -82,11 +95,26 @@ function getBookCollection(folder){
 
         // clean
         collection[file] = clean(collection[file]);
-    });
-    
-    //collection = reduceCollection(collection);
+    }
+
+    collection = reduceCollection(collection, 53);
 
     return collection;
 }
 
-module.exports = {getBookCollection, getStopList};
+async function saveCollection(folder, collection){
+    // create folder if not exists
+    try {
+        await fs.access(folder);
+    } catch (error) {
+        await fs.mkdir(folder, { recursive: true });
+    }
+
+    for (const [filename, content] of Object.entries(collection)){
+        // save file filename into the folder folder and write content into it
+        await fs.writeFile(`${folder}/${filename}`, content);
+    }
+}
+
+
+module.exports = {getBookCollection, getStopList, saveCollection};
