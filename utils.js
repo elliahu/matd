@@ -24,5 +24,16 @@ function generateRandomWords(text, n) {
     return randomWords;
 }
 
+function processTextInChunks(text, chunkSize, callback) {
+    const textLength = text.length;
+    let start = 0;
 
-module.exports = {generateRandomWords};
+    while (start < textLength) {
+        const chunk = text.substr(start, chunkSize);
+        callback(chunk);
+        start += chunkSize;
+    }
+}
+
+
+module.exports = {generateRandomWords, processTextInChunks};

@@ -3,53 +3,22 @@ const dfa = require('./dfa.js')
 const hp = require('./horspool.js')
 const bf = require('./bruteforce.js')
 const utils = require('./utils.js')
+const fuzzy = require('./fuzzy_search.js')
+const ps = require('./PorterStemmer1980.js')
 
 
-// data
 const text = fs.readFileSync('english.50MB', 'utf8');
-const words = utils.generateRandomWords(text, 100);
-console.log(words);
+const chunk_size = 10000;
+let total = 0;
 
-
-// ------------------------------
-let startTime = performance.now();
-words.forEach(word => {
-    const position_bf = bf.bruteForceSearch(word, text)
+utils.processTextInChunks(text,chunk_size, (chunk) => {
+    let result = fuzzy.fuzzySearch(chunk, "survey", 0);
+    if (result.length > 0){
+        console.log(result);
+        total += result.length;
+    }
 });
-let endTime = performance.now();
-let elapsedTime = endTime - startTime;
-console.log(`Brute force function execution took ${elapsedTime.toFixed(3)} milliseconds`);
 
-// ------------------------------
-
-startTime = performance.now();
-words.forEach(word => {
-    const _dfa = new dfa.DFA(word);
-    const position_dfa = _dfa.search(text);
-});
-endTime = performance.now();
-elapsedTime = endTime - startTime;
-console.log(`DFA function execution took ${elapsedTime.toFixed(3)} milliseconds`);
-
-// ------------------------------
-
-startTime = performance.now();
-words.forEach(word => {
-    let _horspool = new hp.Horspool();
-    let index = _horspool.search(text, word);
-});
-endTime = performance.now();
-elapsedTime = endTime - startTime;
-console.log(`HP algorithm execution took ${elapsedTime.toFixed(3)} milliseconds`);
-
-
-
-// Results:
-// console.log("Position BF:", position_bf);
-// console.log("Position DFA:", position_dfa);
-// console.log("Position HP:" , index);
-
-
-
+console.log("Found total of ", total , " matches");
 
 
