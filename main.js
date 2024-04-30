@@ -1,5 +1,6 @@
 const vm = require('./vector_model.js')
 
+
 async function main() {
    
     const collection = (await vm.create().data('gutenberg_processed')).uniqueSet().tf();
@@ -8,12 +9,10 @@ async function main() {
     console.log(collection.tfidf("stranger", 0));
     console.log(collection.s("stranger afflict", 0));
 
-    let best = new Map();
-    for (let id = 0; id < collection._data.size; id++) {
-        best.set(id, collection.s("stranger afflict", id));
-    }
+    console.log(collection.findSimilarDoc('45'));
+    console.log(collection.findSimilarWord('stranger'));
 
-    console.log([...best.entries()].sort((a,b)=> b[1] - a[1]).slice(0,10));
+    console.log(vm.dotProduct(vm.normalize(vm.getRowVector(collection._tf, "stranger")),vm.normalize(vm.getRowVector(collection._tf, "stranger"))))
 }
 
 main();

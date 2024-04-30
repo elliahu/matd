@@ -110,4 +110,16 @@ function generateRandomNumbers(n) {
     return randomNumbers;
 }
 
-module.exports = {generateRandomWords, processTextInChunks, fib, defib, generateRandomNumbers};
+function objectFromArrays(keys, values) {
+    if (keys.length !== values.length) {
+        throw new Error('Arrays must have the same length');
+    }
+
+    const reconstructedObject = {};
+    for (let i = 0; i < keys.length; i++) {
+        reconstructedObject[keys[i]] = values[i];
+    }
+    return reconstructedObject;
+}
+
+module.exports = {generateRandomWords, processTextInChunks, fib, defib, generateRandomNumbers, objectFromArrays};
